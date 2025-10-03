@@ -1,0 +1,452 @@
+local Fluent = loadstring(game:HttpGet("https://raw.githubusercontent.com/discoart/FluentPlus/refs/heads/main/Beta.lua"))()
+local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
+local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
+
+local Window = Fluent:CreateWindow({
+    Title = "RAGE HUB",
+    SubTitle = "by BLIZERD KING",
+    Search = true,
+    Icon = "138721924405087",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(580, 460),
+    Acrylic = true,
+    Theme = "Dark",
+    MinimizeKey = Enum.KeyCode.LeftControl,
+    UserInfo = true,
+    UserInfoTop = false,
+    UserInfoTitle = game:GetService("Players").LocalPlayer.DisplayName,
+    UserInfoSubtitle = "User",
+    UserInfoSubtitleColor = Color3.fromRGB(71, 123, 255)
+})
+
+local Tabs = {
+    Main = Window:AddTab({ Title = "Main", Icon = "" }),
+    Function = Window:AddTab({ Title = "Function", Icon = "code" }),
+    Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
+}
+
+local Minimizer = Fluent:CreateMinimizer({
+  Icon = "",
+  Size = UDim2.fromOffset(44, 44),
+  Position = UDim2.new(0, 320, 0, 24),
+  Acrylic = true,
+  Corner = 10,
+  Transparency = 1,
+  Draggable = true,
+  Visible = true
+})
+
+local Options = Fluent.Options
+
+    local Section = Tabs.Function:AddSection("Player Functions", "user")
+    
+    local WalkSpeedSlider = Tabs.Function:AddSlider("WalkSpeed", {
+        Title = "WalkSpeed",
+        Description = "Adjust your walking speed",
+        Default = 16,
+        Min = 16,
+        Max = 200,
+        Rounding = 1,
+        Callback = function(Value)
+            local character = game.Players.LocalPlayer.Character
+            if character and character:FindFirstChild("Humanoid") then
+                character.Humanoid.WalkSpeed = Value
+            end
+        end
+    })
+
+    WalkSpeedSlider:OnChanged(function(Value)
+        local character = game.Players.LocalPlayer.Character
+        if character and character:FindFirstChild("Humanoid") then
+            character.Humanoid.WalkSpeed = Value
+        end
+    end)
+
+    local InfiniteJumpToggle = Tabs.Function:AddToggle("InfiniteJump", {
+        Title = "Infinite Jump",
+        Default = false
+    })
+
+    InfiniteJumpToggle:OnChanged(function(state)
+        local player = game.Players.LocalPlayer
+        if state then
+            getgenv().InfiniteJumpEnabled = true
+            local function onJumpRequest()
+                if not getgenv().InfiniteJumpEnabled then return end
+                local character = player.Character
+                if character and character:FindFirstChild("Humanoid") then
+                    character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+                end
+            end
+            getgenv().InfiniteJumpConnection = game:GetService("UserInputService").JumpRequest:Connect(onJumpRequest)
+        else
+            getgenv().InfiniteJumpEnabled = false
+            if getgenv().InfiniteJumpConnection then
+                getgenv().InfiniteJumpConnection:Disconnect()
+                getgenv().InfiniteJumpConnection = nil
+            end
+        end
+    end)
+
+    local NoClipToggle = Tabs.Function:AddToggle("NoClip", {
+        Title = "NoClip",
+        Default = false
+    })
+
+    NoClipToggle:OnChanged(function(state)
+        local player = game.Players.LocalPlayer
+        local character = player.Character
+        if not character then return end
+        if state then
+            getgenv().NoClipEnabled = true
+            local function applyNoClip()
+                if not getgenv().NoClipEnabled then return end
+                pcall(function()
+                    for _, part in pairs(character:GetChildren()) do
+                        if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                            part.CanCollide = false
+                        end
+                    end
+                    if character:FindFirstChild("HumanoidRootPart") then
+                        character.HumanoidRootPart.CanCollide = false
+                    end
+                    if character:FindFirstChild("Humanoid") then
+                        character.Humanoid.PlatformStand = false
+                    end
+                end)
+            end
+            getgenv().NoClipConnection = game.RunService.Stepped:Connect(applyNoClip)
+            applyNoClip()
+        else
+            getgenv().NoClipEnabled = false
+            if getgenv().NoClipConnection then
+                getgenv().NoClipConnection:Disconnect()
+                getgenv().NoClipConnection = nil
+            end
+            pcall(function()
+                if character then
+                    for _, part in pairs(character:GetChildren()) do
+                        if part:IsA("BasePart") then
+                            part.CanCollide = true
+                        end
+                    end
+                end
+            end)
+        end
+    end)
+
+    local ESPSection = Tabs.Function:AddSection("ESP Functions", "eye")
+
+    local FullBrightToggle = Tabs.Function:AddToggle("FullBright", {
+        Title = "FullBright",
+        Description = "Iluminar el mapa completamente",
+        Default = false
+    })
+
+    FullBrightToggle:OnChanged(function(state)
+        local Lighting = game:GetService("Lighting")
+        if state then
+            getgenv().OriginalBrightness = Lighting.Brightness
+            getgenv().OriginalAmbient = Lighting.Ambient
+            getgenv().OriginalOutdoorAmbient = Lighting.OutdoorAmbient
+            getgenv().OriginalClockTime = Lighting.ClockTime
+            Lighting.Brightness = 2
+            Lighting.Ambient = Color3.fromRGB(255, 255, 255)
+            Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
+            Lighting.ClockTime = 14
+            for _, effect in pairs(Lighting:GetChildren()) do
+                if effect:IsA("BlurEffect") or effect:IsA("ColorCorrectionEffect") or effect:IsA("SunRaysEffect") or effect:IsA("BloomEffect") then
+                    if not effect:GetAttribute("OriginalEnabled") then
+                        effect:SetAttribute("OriginalEnabled", effect.Enabled)
+                    end
+                    effect.Enabled = false
+                end
+            end
+        else
+            if getgenv().OriginalBrightness then
+                Lighting.Brightness = getgenv().OriginalBrightness
+                Lighting.Ambient = getgenv().OriginalAmbient
+                Lighting.OutdoorAmbient = getgenv().OriginalOutdoorAmbient
+                Lighting.ClockTime = getgenv().OriginalClockTime
+            end
+            for _, effect in pairs(Lighting:GetChildren()) do
+                if effect:IsA("BlurEffect") or effect:IsA("ColorCorrectionEffect") or effect:IsA("SunRaysEffect") or effect:IsA("BloomEffect") then
+                    local originalEnabled = effect:GetAttribute("OriginalEnabled")
+                    if originalEnabled ~= nil then
+                        effect.Enabled = originalEnabled
+                    end
+                end
+            end
+        end
+    end)
+
+    local ESPNameToggle = Tabs.Function:AddToggle("ESPName", {
+        Title = "ESP Name",
+        Description = "Verde: Inocentes | Rojo: Bestia",
+        Default = false
+    })
+
+    ESPNameToggle:OnChanged(function(state)
+        if state then
+            getgenv().ESPNameEnabled = true
+            local function createNameESP(player)
+                if player == game.Players.LocalPlayer then return end
+                if not player.Character then return end
+                local head = player.Character:FindFirstChild("Head")
+                if not head then return end
+                local existingBillboard = head:FindFirstChild("NameESP")
+                if existingBillboard then existingBillboard:Destroy() end
+                local billboard = Instance.new("BillboardGui")
+                billboard.Name = "NameESP"
+                billboard.Parent = head
+                billboard.AlwaysOnTop = true
+                billboard.Size = UDim2.new(0, 200, 0, 50)
+                billboard.StudsOffset = Vector3.new(0, 2, 0)
+                local nameLabel = Instance.new("TextLabel")
+                nameLabel.Parent = billboard
+                nameLabel.Size = UDim2.new(1, 0, 1, 0)
+                nameLabel.BackgroundTransparency = 1
+                nameLabel.Text = player.Name
+                nameLabel.TextScaled = true
+                nameLabel.Font = Enum.Font.SourceSansBold
+                nameLabel.TextStrokeTransparency = 0.5
+                local function updateColor()
+                    if not player:FindFirstChild("TempPlayerStatsModule") or not player.TempPlayerStatsModule:FindFirstChild("IsBeast") then
+                        nameLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+                        return
+                    end
+                    if player.TempPlayerStatsModule.IsBeast.Value then
+                        nameLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+                    else
+                        nameLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+                    end
+                end
+                updateColor()
+                if player:FindFirstChild("TempPlayerStatsModule") and player.TempPlayerStatsModule:FindFirstChild("IsBeast") then
+                    player.TempPlayerStatsModule.IsBeast.Changed:Connect(updateColor)
+                end
+            end
+            for _, player in pairs(game.Players:GetPlayers()) do
+                createNameESP(player)
+            end
+            getgenv().ESPNamePlayerAdded = game.Players.PlayerAdded:Connect(function(player)
+                player.CharacterAdded:Connect(function()
+                    wait(0.5)
+                    if getgenv().ESPNameEnabled then createNameESP(player) end
+                end)
+            end)
+            for _, player in pairs(game.Players:GetPlayers()) do
+                player.CharacterAdded:Connect(function()
+                    wait(0.5)
+                    if getgenv().ESPNameEnabled then createNameESP(player) end
+                end)
+            end
+        else
+            getgenv().ESPNameEnabled = false
+            if getgenv().ESPNamePlayerAdded then
+                getgenv().ESPNamePlayerAdded:Disconnect()
+            end
+            for _, player in pairs(game.Players:GetPlayers()) do
+                if player.Character and player.Character:FindFirstChild("Head") then
+                    local billboard = player.Character.Head:FindFirstChild("NameESP")
+                    if billboard then billboard:Destroy() end
+                end
+            end
+        end
+    end)
+
+local PlayerESPToggle = Tabs.Function:AddToggle("PlayerESP", {
+        Title = "Player ESP",
+        Default = false
+    })
+
+    PlayerESPToggle:OnChanged(function(state)
+        if state then
+            for _, player in pairs(game.Players:GetPlayers()) do
+                if player ~= game.Players.LocalPlayer and player.Character then
+                    pcall(function()
+                        local existingESP = player.Character:FindFirstChild(player.Name .. "'s ESP")
+                        if existingESP then existingESP:Destroy() end
+                        local transparency = 0.5
+                        local Folder = Instance.new("Folder")
+                        Folder.Parent = player.Character
+                        Folder.Name = player.Name .. "'s ESP"
+                        local parts = {"Head", "Torso", "Left Arm", "Right Arm", "Right Leg", "Left Leg"}
+                        local espParts = {}
+                        for _, partName in pairs(parts) do
+                            local part = player.Character:FindFirstChild(partName)
+                            if part then
+                                local adornment = Instance.new("BoxHandleAdornment")
+                                adornment.Parent = Folder
+                                adornment.AlwaysOnTop = true
+                                adornment.Adornee = part
+                                adornment.ZIndex = 1
+                                adornment.Name = partName
+                                adornment.Transparency = transparency
+                                adornment.Size = part.Size
+                                table.insert(espParts, adornment)
+                            end
+                        end
+                        if player:FindFirstChild("TempPlayerStatsModule") and player.TempPlayerStatsModule:FindFirstChild("IsBeast") then
+                            local colorConnection = game.RunService.Heartbeat:Connect(function()
+                                if not player.Character or not player.Character.Parent then
+                                    colorConnection:Disconnect()
+                                    return
+                                end
+                                local color = player.TempPlayerStatsModule.IsBeast.Value and Color3.fromRGB(205, 98, 152) or Color3.new(1, 1, 1)
+                                for _, espPart in pairs(espParts) do
+                                    if espPart and espPart.Parent then
+                                        espPart.Color3 = color
+                                    end
+                                end
+                            end)
+                            Folder:SetAttribute("ColorConnection", colorConnection)
+                        end
+                    end)
+                end
+            end
+        else
+            for _, player in pairs(game.Players:GetPlayers()) do
+                if player.Character then
+                    local espFolder = player.Character:FindFirstChild(player.Name .. "'s ESP")
+                    if espFolder then
+                        local colorConnection = espFolder:GetAttribute("ColorConnection")
+                        if colorConnection then colorConnection:Disconnect() end
+                        espFolder:Destroy()
+                    end
+                end
+            end
+        end
+    end)
+
+    local ComputerESPToggle = Tabs.Function:AddToggle("ComputerESP", {
+        Title = "Computer ESP",
+        Default = false
+    })
+
+    ComputerESPToggle:OnChanged(function(state)
+        if state then
+            getgenv().StopComputerESP = false
+            getgenv().ComputerESPTable = {}
+            local function updateComputerColor(comp)
+                local highlight = comp:FindFirstChild("Highlight")
+                local screen = comp:FindFirstChild("Screen")
+                if highlight and screen then
+                    local color = screen.BrickColor
+                    if color == BrickColor.new("Bright blue") then
+                        highlight.FillColor = Color3.fromRGB(0, 0, 255)
+                    elseif color == BrickColor.new("Dark green") then
+                        highlight.FillColor = Color3.fromRGB(0, 255, 0)
+                    else
+                        highlight.FillColor = Color3.fromRGB(255, 255, 255)
+                    end
+                end
+            end
+            for _, v in pairs(workspace:GetDescendants()) do
+                if v.Name == "ComputerTable" then
+                    if not v:FindFirstChild("Highlight") then
+                        local ESP = Instance.new("Highlight")
+                        ESP.Parent = v
+                    end
+                    table.insert(getgenv().ComputerESPTable, v)
+                    updateComputerColor(v)
+                end
+            end
+            getgenv().ComputerAddedConnection = workspace.DescendantAdded:Connect(function(obj)
+                if obj.Name == "ComputerTable" and not getgenv().StopComputerESP then
+                    if not obj:FindFirstChild("Highlight") then
+                        local ESP = Instance.new("Highlight")
+                        ESP.Parent = obj
+                    end
+                    table.insert(getgenv().ComputerESPTable, obj)
+                    updateComputerColor(obj)
+                end
+            end)
+            task.spawn(function()
+                while not getgenv().StopComputerESP do
+                    for i = #getgenv().ComputerESPTable, 1, -1 do
+                        local comp = getgenv().ComputerESPTable[i]
+                        if comp and comp.Parent then
+                            updateComputerColor(comp)
+                        else
+                            table.remove(getgenv().ComputerESPTable, i)
+                        end
+                    end
+                    task.wait(2)
+                end
+            end)
+        else
+            getgenv().StopComputerESP = true
+            if getgenv().ComputerAddedConnection then
+                getgenv().ComputerAddedConnection:Disconnect()
+            end
+            for _, v in pairs(workspace:GetDescendants()) do
+                if v.Name == "ComputerTable" and v:FindFirstChild("Highlight") then
+                    v.Highlight:Destroy()
+                end
+            end
+            getgenv().ComputerESPTable = {}
+        end
+    end)
+
+    local FreezePodESPToggle = Tabs.Function:AddToggle("FreezePodESP", {
+        Title = "FreezePod ESP",
+        Default = false
+    })
+
+    FreezePodESPToggle:OnChanged(function(state)
+        if state then
+            getgenv().StopFreezePodESP = false
+            local pods = {}
+            for _, v in pairs(workspace:GetDescendants()) do
+                if v.Name == "FreezePod" then
+                    table.insert(pods, v)
+                    if not v:FindFirstChild("Highlight") then
+                        local ESP = Instance.new("Highlight")
+                        ESP.Parent = v
+                        ESP.FillColor = Color3.fromRGB(0, 255, 255)
+                    end
+                end
+            end
+            workspace.DescendantAdded:Connect(function(obj)
+                if obj.Name == "FreezePod" then
+                    table.insert(pods, obj)
+                    if not obj:FindFirstChild("Highlight") then
+                        local ESP = Instance.new("Highlight")
+                        ESP.Parent = obj
+                        ESP.FillColor = Color3.fromRGB(0, 255, 255)
+                    end
+                end
+            end)
+        else
+            getgenv().StopFreezePodESP = true
+            for _, v in pairs(workspace:GetDescendants()) do
+                if v.Name == "FreezePod" and v:FindFirstChild("Highlight") then
+                    v.Highlight:Destroy()
+                end
+            end
+        end
+    end)
+
+    game.Players.LocalPlayer.CharacterAdded:Connect(function()
+        wait(1)
+        if getgenv().NoClipEnabled then NoClipToggle:SetValue(true) end
+        if getgenv().InfiniteJumpEnabled then InfiniteJumpToggle:SetValue(true) end
+    end)
+end
+
+SaveManager:SetLibrary(Fluent)
+InterfaceManager:SetLibrary(Fluent)
+SaveManager:IgnoreThemeSettings()
+SaveManager:SetIgnoreIndexes({})
+InterfaceManager:SetFolder("FluentScriptHub")
+SaveManager:SetFolder("FluentScriptHub/specific-game")
+InterfaceManager:BuildInterfaceSection(Tabs.Settings)
+SaveManager:BuildConfigSection(Tabs.Settings)
+Window:SelectTab(1)
+Fluent:Notify({
+    Title = "RAGEHUB",
+    Content = "The script has been loaded.",
+    Duration = 8
+})
+SaveManager:LoadAutoloadConfig()
